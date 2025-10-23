@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>THÔNG BÁO NHẮC – IDECO</title>
+  <style>
+    /* ===== Namespace: ideco- (tránh xung đột CSS ngoài) ===== */
+    #idecoPopupRoot { all: initial; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; }
+    #idecoPopupRoot, #idecoPopupRoot * { box-sizing: border-box; }
+
+    #idecoPopupRoot{ 
+      --ideco-red:#e02424; 
+      --ideco-blue:#248ae0; 
+      --ideco-yellow:#e0a424; 
+      --ideco-white:#ffffff;
+      --ideco-overlay:rgba(0,0,0,.35); 
+      --ideco-radius:18px; 
+      --ideco-shadow:0 20px 60px rgba(0,0,0,.35), 0 6px 20px rgba(0,0,0,.22); 
+    }
+
+    /* CỤM NÚT ICON (góc trái dưới) */
+    #idecoPopupRoot .ideco-notify-container {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      display: flex;
+      flex-direction: column-reverse;
+      gap: 10px;
+      z-index: 100000;
+    }
+    #idecoPopupRoot .ideco-notify-btn{
+      width:10px; height:10px;
+      border-radius:50%;
+      box-shadow:0 2px 8px rgba(0,0,0,.3);
+      cursor:pointer;
+      border:2px solid #fff;
+      outline:none;
+      display:inline-block;
+    }
+    #idecoPopupRoot .ideco-notify-btn.red { background:var(--ideco-red); }
+    #idecoPopupRoot .ideco-notify-btn.blue { background:var(--ideco-blue); }
+    #idecoPopupRoot .ideco-notify-btn.yellow { background:var(--ideco-yellow); }
+    #idecoPopupRoot .ideco-notify-btn.white { background:var(--ideco-white); border-color:#ddd; }
+
+    /* LỚP PHỦ (không cho đóng bằng click) */
+    #idecoPopupRoot .ideco-overlay{
+      position:fixed; inset:0;
+      background:var(--ideco-overlay);
+      display:none; z-index:99999;
+      pointer-events:none;
+    }
+    #idecoPopupRoot .ideco-overlay.ideco-open{ display:block; }
+
+    /* POPUP: kích thước mới 1000×750 (max) + responsive */
+    #idecoPopupRoot .ideco-popup{
+      position:fixed; top:50%; left:50%;
+      transform:translate(-50%,-50%) scale(.97);
+      width:min(1000px,96vw); 
+      height:min(750px,90vh);
+      background:#fff;
+      border:3px solid;
+      border-radius:var(--ideco-radius);
+      box-shadow:var(--ideco-shadow);
+      display:none; z-index:100001; opacity:0;
+      transition:opacity .2s ease, transform .2s ease;
+    }
+    #idecoPopupRoot .ideco-popup.red { border-color: var(--ideco-red); animation: ideco-blink-red 1s infinite; }
+    #idecoPopupRoot .ideco-popup.blue { border-color: var(--ideco-blue); animation: ideco-blink-blue 1s infinite; }
+    #idecoPopupRoot .ideco-popup.yellow { border-color: var(--ideco-yellow); animation: ideco-blink-yellow 1s infinite; }
+    #idecoPopupRoot .ideco-popup.white { border-color: var(--ideco-white); animation: ideco-blink-white 1s infinite; }
+    #idecoPopupRoot .ideco-popup.ideco-open{ display:block; opacity:1; transform:translate(-50%,-50%) scale(1); }
+
+    @keyframes ideco-blink-red { 0%,50%,100%{border-color:var(--ideco-red);} 25%,75%{border-color:transparent;} }
+    @keyframes ideco-blink-blue { 0%,50%,100%{border-color:var(--ideco-blue);} 25%,75%{border-color:transparent;} }
+    @keyframes ideco-blink-yellow { 0%,50%,100%{border-color:var(--ideco-yellow);} 25%,75%{border-color:transparent;} }
+    @keyframes ideco-blink-white { 0%,50%,100%{border-color:var(--ideco-white);} 25%,75%{border-color:transparent;} }
+
+    #idecoPopupRoot .ideco-popup__content{ padding:20px 22px; height:100%; overflow:auto; font-size:18px; line-height:1.6; }
+    @media (max-width:480px){ #idecoPopupRoot .ideco-popup__content{ font-size:16px; } }
+
+    /* TIÊU ĐỀ ĐỎ & CHỮ HOA (dòng đầu tiên, chữ đậm) */
+    #idecoPopupRoot .ideco-popup__content p:first-child strong{
+      color: var(--ideco-red);
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+
+    /* ====== TOOLTIP ĐẸP CHO ICON ====== */
+    #idecoPopupRoot .ideco-tooltip {
+      position: relative;
+      display: inline-block;
+    }
+    #idecoPopupRoot .ideco-tooltip::after {
+      content: attr(data-tooltip);
+      visibility: hidden;
+      opacity: 0;
+      background-color: rgba(0,0,0,0.85);
+      color: #fff;
+      text-align: center;
+      padding: 6px 10px;
+      border-radius: 6px;
+      position: absolute;
+      bottom: 120%;
+      left: 50%;
+      transform: translateX(-50%);
+      white-space: nowrap;
+      font-size: 14px;
+      z-index: 100002;
+      transition: opacity 0.25s;
+      pointer-events: none;
+    }
+    #idecoPopupRoot .ideco-tooltip::before {
+      content: "";
+      position: absolute;
+      bottom: 110%;
+      left: 50%;
+      transform: translateX(-50%);
+      border-width: 6px;
+      border-style: solid;
+      border-color: rgba(0,0,0,0.85) transparent transparent transparent;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.25s;
+    }
+    #idecoPopupRoot .ideco-tooltip:hover::after,
+    #idecoPopupRoot .ideco-tooltip:hover::before {
+      visibility: visible;
+      opacity: 1;
+    }
+  </style>
+</head>
+<body>
+  <div id="idecoPopupRoot" aria-live="polite">
+    <!-- ICON + TOOLTIP -->
+    <div class="ideco-notify-container">
+      <div class="ideco-tooltip" data-tooltip="Thông báo sản phẩm mới - Chương trình mới">
+        <button class="ideco-notify-btn white" id="idecoNotifyBtnWhite" aria-label="Mở thông báo chung"></button>
+      </div>
+      <div class="ideco-tooltip" data-tooltip="Thông báo quan trọng - Lời khuyên">
+        <button class="ideco-notify-btn red" id="idecoNotifyBtnRed" aria-label="Mở thông báo quan trọng"></button>
+      </div>
+      <div class="ideco-tooltip" data-tooltip="Thông tin nhắc việc">
+        <button class="ideco-notify-btn blue" id="idecoNotifyBtnBlue" aria-label="Mở thông báo thông tin"></button>
+      </div>
+      <div class="ideco-tooltip" data-tooltip="Lời khuyên cho các em">
+        <button class="ideco-notify-btn yellow" id="idecoNotifyBtnYellow" aria-label="Mở thông báo nhắc nhở"></button>
+      </div>
+    </div>
+
+    <div class="ideco-overlay" id="idecoOverlay" hidden></div>
+
+    <!-- POPUP: ĐỎ -->
+    <section class="ideco-popup red" id="idecoPopupRed" role="dialog" aria-modal="true" aria-describedby="idecoPopupDescRed">
+      <div class="ideco-popup__content" id="idecoPopupDescRed">
+        <p><strong>🔴  CHIA SẼ LẠI NỘI DUNG CÔNG VIỆC CHUNG </strong></p>
+        <p><strong>1️⃣ NÊN THƯỜNG XEM LẠI PODCAST ĐÀO TẠO HƯỚNG DẪN CÓ CẬP NHẬT MỚI</strong></p>
+        Các em rảnh nhớ nghe lại để nắm rõ và làm thật tốt nhé.</br>
+		
+        <p><strong>2️⃣ XỬ LÝ CÔNG VIỆC TRONG TUẦN </strong><br>
+        Em nhớ kiểm tra lại kế hoạch - Checklist công việc - nếu có phát sinh hãy điều chỉnh bổ sung.</br>
+		Các chứng từ mua hàng- bán hàng: nhập liệu khai báo đúng cả 2 phầm mềm Misa- ERP cùng lúc nhé!</br>
+		Xem lại các nội dung khai báo trên ERP dể chọn: Hóa đơn đã xuất VAT - Xác nhận -duyệt các phiều đơn hàng- xuất nhập</br>
+		Xem lại ỨNG DỤNG KHAI BÁO: cái nào chưa xử lý - tranh thủ nhập lại khai lại- tránh bị sót trôi việc!</br>
+		</p>
+        <p><strong>3️⃣ NGHIỆP PHỤ CHUYÊN MÔN CHUNG </strong><br>
+        Các đơn hàng trong ngày  cố gắng tranh thủ đóng - giao trong buổi sáng càng tốt- nhất là hàng gởi tỉnh xa</br>
+        Sản phẩm bị lỗi do nhà cung cấp nên tiến hành bổ sung văn bản- ghi chú xử lý hạch toán hàng trả về đúng nghiệp vụ kế toán- nghiệp vụ kho</br>
+		Các khai báo phát sinh chi - thu nên nhập khai đúng ngay Misa- ERP tránh để dồn cuối tháng , phát sinh sai - nhầm </br>
+		Luôn cùng team: KẾ TOÁN- KHO VẬN- kiểm định kỳ kho 1 tháng/ lần và Qúy 1 lần ( kiểm toàn diện hết kỹ hơn)</br>
+		Kế toán khi phát sinh mã sản phẩm mới: khai đúng đồng bộ Misa-ERP và nhớ luôn khai liên thông công y kế - luôn kiểm tra đồng bộ dữ liệu định kỳ</br>
+		 </p>
+	  </div>
+    </section>
+
+    <!-- POPUP: XANH -->
+    <section class="ideco-popup blue" id="idecoPopupBlue" role="dialog" aria-modal="true" aria-describedby="idecoPopupDescBlue">
+      <div class="ideco-popup__content" id="idecoPopupDescBlue">
+        <p><strong>🔵 CHIA SẼ LỜI KHUYÊN CHO CÁC EM KINH DOANH- KHO VẬN - TRỢ LÝ</strong></p>
+        <p><strong>1️⃣  THỰC HIỆN TỐT TRONG NHIỆM VỤ MỞ VÀ PHÁT TRIỂN KHÁCH HÀNG</strong><br>
+        DO KHẢ NĂNG TỪ CHỐI NHIỀU- KHẢ NĂNG TRÌ HOÃN GIAO DỊCH LUÔN PHÁT SINH- NGƯỜI THÔNG MINH VÀ CHỦ ĐỘNG THÌ PHẢI:</br>
+		- Mỗi ngày, mỗi cá nhân kinh doanh luôn tự đặt ra mục tiêu tìm mới khách hàng ít nhất 3 khách hàng mới, đặc biệt cho nhóm UVS </br>
+		- Khi có bất cứ phát sinh giao dịch mới phải khai báo ngay trên báo cáo giao dịch ERP và làm đúng nội dung khai báo có tính cập nhật REAL TIME</br>
+		- Khi phát triển khách hàng muốn chốt đơn, chốt hợp tác: nên chuẩn bị trước kịch bản sản phẩm chào - kịch bản bị từ chối - đề ra cách xử lý nó</br>
+        - Nhóm UVS: UVS Silicone gel, UVS Raskee; UVS Bionee, UVS Nailcare muốn có đơn phải tìm mọi đối tượng đa dạn: mỹ phẩm, nhà thuốc, chuỗi NT...</br>
+		- Muốn có thể chốt hợp tác tốt phải vận dụng mọi kỹ năng xử lý: poster, tin nhắn, zalo, file thông tin sản phẩm để chia sẽ mọi cách tiếp cận.</br>
+		- Đừng chát thay vì chịu khó phải tìm cách gọi điện khách hàng để giải thích bất cứ nhu cầu khách hàng hỏi, tạo cảm xúc, chủ động lắng nghe thì tốt hơn.</br>
+		</p>
+		<p><strong>2️⃣ HƯỚNG DẪN  - QUY TRÌNH - ĐỊNH HƯỚNG VIỆC</strong><br>
+        - ĐỂ KHÔNG BỎ SÓT KHÁCH HÀNG LÊN ĐƠN TRONG KỲ, các em kinh doanh phải quản lý ứng dụng khách hàng đặt hàng thành thạo từ danh sách khách hàng được giao.</br>
+        - Luôn mở ứng dụng kiểm tra - tìm cách gọi, tiếp xúc có chủ ý muốn bán hàng với khách hàng, đừng hỏi thăm chung chung và tìm cách mời sản phẩm khác.</br>
+		- Việc nào ban giám đốc giao, cấp quản lý giao phải chủ động khai báo trong kế hoạch hay thêm vào checklist và xử lý đến cùng - báo cáo .</br>
+		- Chủ động nhắc nhở Bộ phận kho- kế toán hỗ trợ xử lý đơn hàng trong tuần hoàn thành cho nhanh thông qua định kỳ xem lại ERP</br>
+		</p>		
+		
+		<p><strong>3️⃣ KHO VẬN- SOP </strong><br>
+        - Luôn kiểm tra thủ tục nhập xuất kho theo lô hạn dùng cẩn thận trên mọi chứng từ để đảm bảo truy tìm nhanh-  phải tranh thủ khai bổ sung </br>
+        - Khai báo chặt chẽ ứng dụng ĐÓNG HÀNG- GIAO NHẬN- ỨNG DỤNG QUÀN LÝ KHO HÀNG LÔ DATE kỷ- có cùng nhau kiểm tra lại mỗi tuần </br>
+		- Ưu tiên xử lý giao đơn hàng Chuỗi Nhà Thuốc lớn khi đóng xong- luôn chia se nhau trong team tình huống cùng xử lý nhanh đơn hàng tránh trôi việc</br>
+		- Khai báo form giao nhận- form quản lý điều kiện kho nhiệt đô SOP chặt chẽ mỗi ngày - cùng lưu dữ liệu từ thiết bị định kỳ sau mỗi tháng.</br>
+		- Kiểm soát kho: thông qua đinh kỳ tháng cùng kiểm kho- vệ sinh kho- dọn dẹp kho định kỳ tháng- quý / lần</br>
+		- Phối hợp xử lý đổi trả hàng đúng thủ tục: biên bản- chứng từ cho nghiệp vụ này phải in lưu rỏ ràng trong bộ phận</br>
+	  	- SOP cần kiểm tra kỷ DANH MỤC THUỐC  không kinh doanh thuốc KSĐB và ký mọi thủ tục quy định định kỳ với DS Chuyên môn</br>
+		</p>
+	  </div>
+    </section>
+
+    <!-- POPUP: VÀNG -->
+    <section class="ideco-popup yellow" id="idecoPopupYellow" role="dialog" aria-modal="true" aria-describedby="idecoPopupDescYellow">
+      <div class="ideco-popup__content" id="idecoPopupDescYellow">
+        <p><strong>🟡 LỜI KHYÊN KẾ TOÁN - QUẢN LÝ TÀI CHÍNH KẾ TOÁN</strong></p>
+        <p><strong>1️⃣  NGHIỆP VỤ PHÁT SINH TRONG KỲ</strong><br>
+        - Bảng THIẾT LẬP CHECKLIST -KẾ HOẠCH - XEM CHỈNH BỔ SUNG NGAY NẾU PHÁT SINH - ĐỊNH KỲ KIỂM TRA.</p>
+        - Phần phát sinh thường xuyên: chứng từ mua- bán cần xử lý ngay khi phát sinh để kịp cho mọi giao dịch kinh doanh.</p>
+		- Khi khai báo phát sinh luôn kiểm lại trên cả MISA-ERP: trong đó Misa khai giá vốn thuốc cẩn thận cùng đồng bộ giá vốn trên ERP.</p>
+		- Chi phí nhận hàng mua nếu do công ty chịu thì phải hạch toán trong lô hàng đó giá vốn bình quân khai trên Misa</p>
+		- Chủ động phối hợp bộ phận kho- giao nhận kiểm soát viết xuất nhập hàng- có thể giao gia hỗ trợ đóng, kiểm kê hàng khi cần.</p>
+		- Định kỳ theo dõi công nợ Thu -Trả cùng kinh doanh: nhất là chuỗi NT, lập phiếu chi trả nhà NCC định kỳ thứ 4 gởi chị Khánh BGĐ xem ( nên in ra) duyệt để chi </p>
+		- Kế toán luôn kiểm tra lại đơn hàng kinh doanh xem chiết khấu - chính sách- chương trình có đúng công ty ban hàng, mới xuất hóa đơn.</p>
+		- Kế toán xem phần đề xuất trên ERP của bộ phận kinh doanh , đánh giá, phù hợp ngân sách, lợi nhuận  thì xác nhận, Ban giám đốc chỉ duyệt khi đủ các phần xác nhận</P>
+		
+		<p><strong>2️⃣  QUẢN LÝ DỮ LIỆU KẾ TOÁN- XỬ LÝ DỮ LIỆU KẾ TOÁN</strong><br>
+       - Báo cáo kết quả kinh doanh trên ERP  : để đúng phải khai báo phát sinh và luôn kiểm tra lại các số cùng kỳ trước đối chiếu cẩn thận.</p>
+	   - Luôn kiểm tra lại khai liên thông cổng dược- có thể chưa đồng bộ thời điển này do lỗi thì phải quay lại thử lần sau- tránh bỏ trôi luôn.</p>
+       - Sổ sách , đặc biệt form khai xuất nhập tồn kho theo SOP : lô hạn dùng- nên xuất in ra định kỳ đóng cuốn vì khả năng thanh tra- kiểm tra có thể yêu cầu xem.</p>
+	   - Công việc xem lại lại sổ sách các báo cáo Cân đối kế toán- báo cáo lưu chuyển tiền tệ- báo cáo kết quả kinh doanh trên Misa nên kiểm tra bút toán và gởi PDF cho BGD định lỳ.</p>
+	   - Các phần hệ kế toán: phải theo dõi thực hiện trong checklist đã nêu và cập nhật</p>
+	   
+	   <p><strong>3️⃣ MUA HÀNG - BÁN HÀNG </strong><br>
+        - Hạch toán hàng trả về phải đúng nghiệp trên Misa ( xem thêm hướng dẫn) - khai nhập kho khách hàng xong trên ERP. </p>
+        - Kiểm tra phát sinh trả thu hộ nếu chuyển vào tài khoản công ty cẩn thận để khai báo nghiệp vụ phải thu trên Misa - kiểm tra bấm DUYỆT đơn trên ERP.</p>
+		- Kế toán luôn yêu cầu mọi văn bản- biên bản đổi trả hàng phải lập từ kinh doanh- kho vận mới hoàn thành đống sổ nghiệp vụ đó.</p>
+		- Khi mua hàng từ nhà cung cấp: yêu cầu có bảng kê gởi trước qua zalo cùng kế toán- kinh doanh xem trước khi nhận hàng. <p>
+		- Kiểm tra kỹ đơn hàng Pharmacity trên ERP có khoản chiết khấu báo cáo ( từ khoản hỗ trợ khác ngoài ck cơ bản ) đúng mới hạch toán ERP, còn Misa sẽ hạch toán trên hóa đơn.<p>
+		BAN GIÁM ĐỐC CÁM ƠN CÁC EM NHE!</p>
+
+	   
+	 </div>
+    </section>
+
+    <!-- POPUP: TRẮNG -->
+    <section class="ideco-popup white" id="idecoPopupWhite" role="dialog" aria-modal="true" aria-describedby="idecoPopupDescWhite">
+      <div class="ideco-popup__content" id="idecoPopupDescWhite">
+        <p><strong>⚪ HƯỚNG DẪN HỘI NHẬP CHO CÁC BẠN MỚI TRONG M</strong></p>
+        <p><strong>1️⃣ CÁCH TÌM HIỂU NỘI DUNG CỦA KINH DOANH  </strong><br>        
+		- Không nên xem và nghe video - podcast lung tung thiểu tập trung có kế hoạch rỏ ràng mà nên viết ra nội dung cần tìm hiểu</br>
+        - Nghe nội dung podcast-video:  GIỚI THIỆU PHẦN HỘI NHẬP- Hãy xem và nghe trước để hiểu.</br>
+	    - Nghe và xem: Cách quản lý khách hàng được giao - cách phát triển khách hàng mới - Menu báo cáo giao dịch khách hàng  ứng dụng quản lý đặt hàng</p>
+		- Nghe và xem và hỏi CHAT BOT: Cách tạo mã khách hàng- chính sách bán hàng nhóm thuốC - không phải thuốc - quy trình đơn hàng - điều kiện bán hàng thuốc</p>
+		- Nghe và xem và hỏi CHAT BOT: tra cứu xem bảng giá thuốc - bảng giá nhóm không phải thuốc ở đâu trên ERP</p>
+		- Nghe và xem :Cách xử lý đơn hàng cho khách hàng nhóm không phải thuốc ( dược mỹ phẩm ) thế nào -podcasr</p>
+		- Thao tác trên ERP nhưng menu cần: Báo cáo hoạt động giao dịch khách hàng - Đơn bán - báo cáo ( mục báo cáo kinh doanh) - báo cáo XNTKH</p>
+		- Thao tác trên ERP nhưng menu cần: Lập kế hoạch - ỨNG DỤNG QUẢN LÝ ( xem checklist - tra cứu thuốc - không phải thuốc ..); xem giá </p>
+		- Thao tác trên ERP nhưng menu cần: Ừng dụng khách hàng đặt hàng - Ứng dụng Chuỗi Đặt hàng - Bảng KPI ( đọc hiểu ) - ICON ĐỊNH HƯỚNG THÁNG- TUẦN </p>
+		- Ngoài ra hãy tương tác đồng nghiệp- cấp trên để hỏi và nắm các nội dung tương tác bộ phận </p>
+		- CÁCH HỘI NHẬP NHANH- TRỞ NHÀ XEM - NGHE THÊM -VÀO CÔNG TY TRANH THỦ TƯƠNG TÁC THỰC TẾ TÁC VỤ TRÊN PHẦN MỀM VÀ THAM GIA CÔNG TÁC VIỆC QUẢN LÝ KHÁCH HÀNG </p>
+
+				</p>
+		<p><strong>2️⃣  KỀ TOÁN </strong><br>
+        - Xem- nghe: nội dung chuyên cho nghiệp vụ kế toán  - Tập trung tìm hiểu phần khai kế toán trên ERP .</br>
+        - Thao tác ứng dụng chổ nào chưa hiểu phải hỏi- trao đổi rỏ: .</br>
+		- Phải cùng lại diễn biến tâm lý tiêu cức mà chẵng giúp gì thay vì cứ làm theo cách tốt nhất rồi sẽ tìm thấy thành công</p>
+		- Hãy ứng dụng AI trong xử lý việc tốt hơn- nhanh hơn và dĩ nhiên cho nhiều thời gian hơn trong bán hàng để có doanh thu, có thưởng tốt hơn.<br>
+		</p>
+		<p><strong>3️⃣  ỨNG DỤNG TRÊN DI ĐỘNG ĐỂ TIỆN XỬ LÝ CÔNG VIỆC </strong><br>
+                       HTTPS://CONGTYIDECO.GITHUB.IO/MOBILE </p>
+			   CÙNG NHAU XỬ LÝ TIỆN LỢI HƠN - NHANH HƠN - ĐÚNG HƠN </p>	
+		
+	  
+	  
+	  </div>
+    </section>
+  </div>
+
+  <script>
+    (function(){
+      const overlay = document.getElementById('idecoOverlay');
+      let autoCloseTimeout;
+      let currentPopup = null;
+
+      // Map nút - popup
+      const popups = {
+        white: { btn: document.getElementById('idecoNotifyBtnWhite'), popup: document.getElementById('idecoPopupWhite') },
+        red:   { btn: document.getElementById('idecoNotifyBtnRed'),   popup: document.getElementById('idecoPopupRed') },
+        blue:  { btn: document.getElementById('idecoNotifyBtnBlue'),  popup: document.getElementById('idecoPopupBlue') },
+        yellow:{ btn: document.getElementById('idecoNotifyBtnYellow'),popup: document.getElementById('idecoPopupYellow') }
+      };
+
+      function openPopup(popup) {
+        // Nếu mở lại cùng popup: gia hạn 15s, không cho tự đóng bằng thao tác
+        if (currentPopup === popup && popup.classList.contains('ideco-open')) {
+          clearTimeout(autoCloseTimeout);
+          autoCloseTimeout = setTimeout(closePopup, 40000);
+          return;
+        }
+
+        // Đóng popup khác (nếu có)
+        if (currentPopup && currentPopup !== popup) {
+          currentPopup.classList.remove('ideco-open');
+        }
+
+        overlay.hidden = false;
+        overlay.classList.add('ideco-open');
+        popup.classList.add('ideco-open');
+        document.documentElement.style.overflow = 'hidden';
+        currentPopup = popup;
+
+        // Tự đóng sau 15 giây (chỉ code mới đóng được)
+        clearTimeout(autoCloseTimeout);
+        autoCloseTimeout = setTimeout(closePopup, 35000);
+      }
+
+      function closePopup() {
+        overlay.classList.remove('ideco-open');
+        if (currentPopup) currentPopup.classList.remove('ideco-open');
+        clearTimeout(autoCloseTimeout);
+        setTimeout(() => { overlay.hidden = true; }, 200);
+        document.documentElement.style.overflow = '';
+        currentPopup = null;
+      }
+
+      // Gán sự kiện cho nút
+      popups.white.btn.addEventListener('click', () => openPopup(popups.white.popup));
+      popups.red.btn.addEventListener('click', () => openPopup(popups.red.popup));
+      popups.blue.btn.addEventListener('click', () => openPopup(popups.blue.popup));
+      popups.yellow.btn.addEventListener('click', () => openPopup(popups.yellow.popup));
+
+      // Không cho overlay click để đóng (cố ý bỏ lắng nghe)
+      // overlay.addEventListener('click', closePopup);
+      
+      // API tùy chọn
+      window.IDECO_POPUP = {
+        open: (type) => openPopup(popups[type].popup),
+        isOpen: () => currentPopup !== null
+      };
+    })();
+  </script>
+</body>
+</html>
